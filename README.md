@@ -1,6 +1,10 @@
 # python-vehicle-routing
 Python implementation of Dynamic Vehicle Routing (DVR) algorithms
 
+## Supported Platform:
+- Anaconda on Ubuntu 20.04 LTS
+- Miniforge on Apple M1 Mac
+
 ## Usage
 1. Install required dependency:
 ```bash
