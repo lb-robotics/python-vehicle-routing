@@ -24,8 +24,8 @@ dependencies:
   - libcxx=13.0.1
   - libdeflate=1.10
   - libffi=3.4.2
-  - libgfortran=5.0.0.dev0
-  - libgfortran5=11.0.1.dev0
+  - libgfortran
+  - libgfortran5
   - liblapack=3.9.0
   - libopenblas=0.3.20
   - libpng=1.6.37
