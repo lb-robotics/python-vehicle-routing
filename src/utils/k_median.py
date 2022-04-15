@@ -43,7 +43,7 @@ class KMedian:
 
   def run(self) -> tuple:
     """
-    Performs k-means clustering by calling kmeans_iter until no centroid value changes.
+    Performs k-median clustering by calling kmeans_iter until no centroid value changes.
     
     INPUT:
 
