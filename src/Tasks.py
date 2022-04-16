@@ -16,11 +16,14 @@ class Tasks(Thread):
 
     self.done = False
 
-    self.mode_random = 'random'  # random
+    self.mode_random = 'random'  # randoms
     self.mode_fcfs = 'fcfs'  # first-come-first-serve
     self.mode_dc = 'dc'  # divide-and-conquer
+    self.mode_m_sqm = 'm_sqm'  # m-SQM
 
-    self.available_modes = [self.mode_random, self.mode_fcfs, self.mode_dc]
+    self.available_modes = [
+        self.mode_random, self.mode_fcfs, self.mode_dc, self.mode_m_sqm
+    ]
     self.current_mode = mode
 
     # sanity check
@@ -52,6 +55,8 @@ class Tasks(Thread):
         self.assignFCFS(t)
       elif self.current_mode == self.mode_dc:
         self.assignDC(t)
+      elif self.current_mode == self.mode_m_sqm:
+        self.assignMSQM(t)
       else:
         raise NotImplementedError(
             'Current task assignment mode is not supported')
@@ -73,6 +78,13 @@ class Tasks(Thread):
         nearest_inode = inode
 
     self.G.V[nearest_inode].assignTask(t)
+
+  def assignMSQM(self, t: np.ndarray):
+    # assign to the nearest m median, FCFS
+    distances = np.linalg.norm((t.reshape((1, 2)) - self.G.centroids), axis=1)
+    node_index = np.argmin(distances)
+
+    self.G.V[node_index].assignTask(t)
 
   def assignDC(self, t: np.ndarray):
     # assign task to corresponding partition based on its coordinates

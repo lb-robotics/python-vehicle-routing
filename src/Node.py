@@ -9,7 +9,7 @@ from Edge import Edge
 
 class Node(Thread):
 
-  def __init__(self, uid, use_tsp=False):
+  def __init__(self, uid, mode='random'):
     """ Constructor """
     Thread.__init__(self)
 
@@ -25,8 +25,31 @@ class Node(Thread):
     self.dt = 0  # time step
 
     self.taskqueue = []  # list of tasks to perform in order
+    self.hub = np.zeros(2)
 
-    self.use_tsp = use_tsp
+    ############### mode ###############
+    self.mode_random = 'random'  # randoms
+    self.mode_fcfs = 'fcfs'  # first-come-first-serve
+    self.mode_dc = 'dc'  # divide-and-conquer
+    self.mode_m_sqm = 'm_sqm'  # m-SQM
+
+    self.available_modes = [
+        self.mode_random, self.mode_fcfs, self.mode_dc, self.mode_m_sqm
+    ]
+    self.current_mode = mode
+
+    # sanity check
+    mode_recognized = False
+    for available_mode in self.available_modes:
+      if self.current_mode == available_mode:
+        mode_recognized = True
+        break
+    if not mode_recognized:
+      raise NotImplementedError(
+          'Current assignment mode is not supported: %s' % self.current_mode)
+    ####################################
+
+    # Divide and Conquer
     self.tsp_path = []
     self.past_tasks = []
 
@@ -58,6 +81,7 @@ class Node(Thread):
   def setState(self, s: np.ndarray):
     """ update the state of the node """
     self.state = s
+    self.hub = s
 
   def getState(self) -> np.ndarray:
     """ return the state of the node """
@@ -96,7 +120,7 @@ class Node(Thread):
 
   def systemdynamics(self):
     """ Move the vehicle towards the goal """
-    if self.use_tsp:
+    if self.current_mode == self.mode_dc:
       # 1. If taskqueue is NOT empty, visit next TSP waypoint;
       # 2. If taskqueue is empty, return back to centroid of all past tasks
       if len(self.taskqueue) > 0 and len(self.tsp_path) > 0:
@@ -109,6 +133,17 @@ class Node(Thread):
         velocity = this_goal - self.state
         velocity = velocity / np.linalg.norm(velocity)
         self.state = self.state + self.nominaldt * velocity
+    elif self.current_mode == self.mode_m_sqm:
+      # 1. If taskqueue is NOT empty, visit next task;
+      # 2. If taskqueue is empty, return back to hub
+      if len(self.taskqueue) > 0:
+        this_goal = self.taskqueue[0]
+      else:
+        this_goal = self.hub
+      velocity = this_goal - self.state
+      if np.linalg.norm(velocity) > 0:
+        velocity = velocity / np.linalg.norm(velocity)
+      self.state = self.state + self.nominaldt * velocity
     elif (len(self.taskqueue) > 0):
       this_goal = self.taskqueue[0]
       velocity = this_goal - self.state
@@ -119,7 +154,7 @@ class Node(Thread):
   def updategoal(self):
     """ Updates goal to the next goal if this one has been reached """
     if (len(self.taskqueue) > 0):
-      if self.use_tsp:
+      if self.current_mode == self.mode_dc:
         # 1. If TSP path is computed, visit next TSP waypoint;
         # 2. If TSP path is empty (finished/not computed), compute new TSP path
         if len(self.tsp_path) > 0:

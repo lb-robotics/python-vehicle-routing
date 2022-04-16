@@ -6,15 +6,30 @@ from Tasks import *
 import numpy as np
 import time
 
+from Sampler import PointSampler
+from utils.k_median import KMedian
 
-def generateRandomGraph(N: int, use_tsp=False) -> Graph:
-  G = Graph()
+
+def generateRandomGraph(N: int, mode='random') -> Graph:
+  G = Graph(mode=mode)
+
+  if mode == 'm_sqm':
+    # m-SQM --- precompute m-median points
+    sampler = PointSampler([-1, -1], [1, 1], distribution_type='uniform')
+    num_samples = 10000
+    points_sampled = sampler.sample(num_samples)
+    k_median = KMedian(points_sampled, N)
+    print('========== m-SQM policy precomputation ==========')
+    _, centroids, iters = k_median.run()
+    print('k-median clustering: %d points, %d iters' % (num_samples, iters))
+    print('========== m-SQM precomputation finished ==========')
+    G.centroids = centroids
 
   for inode in range(N):
     # randomly generate node states
-    n = Node(inode, use_tsp=use_tsp)
+    n = Node(inode, mode)
 
-    if use_tsp:
+    if mode == 'dc':
       # divide and conquer --- initialize each vehicle inside the designed partition
       #
       # Current designed partition:
@@ -23,6 +38,9 @@ def generateRandomGraph(N: int, use_tsp=False) -> Graph:
       pol = np.array([1, -np.pi + inode * dTheta + dTheta / 2])  # rho, phi
       xy = np.array([pol[0] * np.cos(pol[1]), pol[0] * np.sin(pol[1])])
       n.setState(xy)
+    elif mode == 'm_sqm':
+      # m-SQM --- initialize each vehicle to be the m-median locations within the area
+      n.setState(centroids[inode])
     else:
       n.setState(
           np.multiply(np.random.rand(2), np.array([2, 2])) - np.array([1, 1]))
@@ -34,12 +52,11 @@ def generateRandomGraph(N: int, use_tsp=False) -> Graph:
 
 ### MAIN
 if __name__ == '__main__':
-  list_available_modes = ['random', 'fcfs', 'dc']
-  current_mode = 'random'
+  list_available_modes = ['random', 'fcfs', 'dc', 'm_sqm']
+  current_mode = 'm_sqm'
 
   # generate a random graph with 10 nodes
-  use_tsp = (current_mode == 'dc')
-  G = generateRandomGraph(10, use_tsp)
+  G = generateRandomGraph(10, mode=current_mode)
 
   # set up thread for generating and assigning tasks
   T = Tasks(G, 5, mode=current_mode)

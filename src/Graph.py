@@ -7,13 +7,14 @@ from matplotlib import animation
 
 class Graph:
 
-  def __init__(self, filename=None):
+  def __init__(self, mode='random', filename=None):
     """ Constructor """
     self.Nv = 0
     self.V = []
     self.E = []
     self.root = None
     self.num_active_tasks = []
+    self.centroids = None
 
     # for plotting
     self.animatedt = 100  # milliseconds
@@ -23,6 +24,28 @@ class Graph:
     self.pts, = self.ax.plot([], [], 'bo')
     self.pts_t, = self.ax.plot([], [], 'r*')
     self.anim = None
+
+    ############### mode ###############
+    self.mode_random = 'random'  # randoms
+    self.mode_fcfs = 'fcfs'  # first-come-first-serve
+    self.mode_dc = 'dc'  # divide-and-conquer
+    self.mode_m_sqm = 'm_sqm'  # m-SQM
+
+    self.available_modes = [
+        self.mode_random, self.mode_fcfs, self.mode_dc, self.mode_m_sqm
+    ]
+    self.current_mode = mode
+
+    # sanity check
+    mode_recognized = False
+    for available_mode in self.available_modes:
+      if self.current_mode == available_mode:
+        mode_recognized = True
+        break
+    if not mode_recognized:
+      raise NotImplementedError(
+          'Current assignment mode is not supported: %s' % self.current_mode)
+    ####################################
 
     # for reading in graphs if they come from a file
     if not (filename is None):
@@ -112,8 +135,8 @@ class Graph:
     x = []
     y = []
     for i in range(self.Nv):
-      if self.V[i].use_tsp and len(self.V[i].tsp_path) > 0 and len(
-          self.V[i].taskqueue) > 0:
+      if self.V[i].current_mode == self.mode_dc and len(
+          self.V[i].tsp_path) > 0 and len(self.V[i].taskqueue) > 0:
         x.append(self.V[i].taskqueue[self.V[i].tsp_path[0]][0])
         y.append(self.V[i].taskqueue[self.V[i].tsp_path[0]][1])
       elif (len(self.V[i].taskqueue) > 0):
