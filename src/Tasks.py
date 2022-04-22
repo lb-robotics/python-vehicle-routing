@@ -7,12 +7,17 @@ from Graph import Graph
 
 class Tasks(Thread):
 
-  def __init__(self, G: Graph, lambda_p: float, mode='random'):
+  def __init__(self,
+               G: Graph,
+               lambda_p: float,
+               mean_s: float = 1.0,
+               mode='random'):
     """ Constructor """
     Thread.__init__(self)
 
     self.G = G
     self.lambda_p = lambda_p  # Poisson process rate parameter
+    self.mean_s = mean_s  # mean of service time, \bar{s}
 
     self.done = False
 
@@ -49,49 +54,58 @@ class Tasks(Thread):
       # location of next task
       t = np.multiply(np.random.rand(2), np.array([2, 2])) - np.array([1, 1])
 
+      # service time of next task
+      #   assume Gaussian distribution with self.mean_s and variance 1.0
+      s = np.random.normal(loc=self.mean_s, scale=self.mean_s / 3)
+      s = np.clip(s, 0.0, None)
+
       if self.current_mode == self.mode_random:
-        self.assignRandom(t)
+        self.assignRandom((t, s))
       elif self.current_mode == self.mode_fcfs:
-        self.assignFCFS(t)
+        self.assignFCFS((t, s))
       elif self.current_mode == self.mode_dc:
-        self.assignDC(t)
+        self.assignDC((t, s))
       elif self.current_mode == self.mode_m_sqm:
-        self.assignMSQM(t)
+        self.assignMSQM((t, s))
       else:
         raise NotImplementedError(
             'Current task assignment mode is not supported')
 
-  def assignRandom(self, t: np.ndarray):
+  def assignRandom(self, t: tuple):
     # assign to a random vehicle
     inode = np.random.randint(self.G.Nv)
     self.G.V[inode].assignTask(t)
 
-  def assignFCFS(self, t: np.ndarray):
+  def assignFCFS(self, t: tuple):
     # assign to the nearest vehicle, FCFS
+    t_loc, t_s = t
     nearest_inode = -1
     nearest_dist = np.inf
     for inode in range(self.G.Nv):
       pos = self.G.V[inode].getState()
-      dist = np.linalg.norm(t - pos)
+      dist = np.linalg.norm(t_loc - pos)
       if dist < nearest_dist:
         nearest_dist = dist
         nearest_inode = inode
 
     self.G.V[nearest_inode].assignTask(t)
 
-  def assignMSQM(self, t: np.ndarray):
+  def assignMSQM(self, t: tuple):
     # assign to the nearest m median, FCFS
-    distances = np.linalg.norm((t.reshape((1, 2)) - self.G.centroids), axis=1)
+    t_loc, t_s = t
+    distances = np.linalg.norm((t_loc.reshape((1, 2)) - self.G.centroids),
+                               axis=1)
     node_index = np.argmin(distances)
 
     self.G.V[node_index].assignTask(t)
 
-  def assignDC(self, t: np.ndarray):
+  def assignDC(self, t: tuple):
     # assign task to corresponding partition based on its coordinates
     #
     # Current designed partition:
     #   Divide the entire space [-1,1]x[-1,1] into self.G.Nv wedges, centering at (0,0)
-    theta = np.arctan2(t[1], t[0])
+    t_loc, t_s = t
+    theta = np.arctan2(t_loc[1], t_loc[0])
     dTheta = 2 * np.pi / self.G.Nv
     target_inode = int(np.floor((theta - (-np.pi)) / dTheta))
     self.G.V[target_inode].assignTask(t)

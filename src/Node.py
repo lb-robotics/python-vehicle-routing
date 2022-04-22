@@ -26,6 +26,7 @@ class Node(Thread):
     self.reach_goal_eps = 0.1  # threshold to decide whether goal is reached
 
     self.taskqueue = []  # list of tasks to perform in order
+    self.taskqueue_serviceTime = []
     self.hub = np.zeros(2)
 
     ############### mode ###############
@@ -98,9 +99,11 @@ class Node(Thread):
   #
   ################################################
 
-  def assignTask(self, t: np.ndarray):
+  def assignTask(self, t: tuple):
     """ Add a task to the queue """
-    self.taskqueue.append(t)
+    t_loc, t_s = t
+    self.taskqueue.append(t_loc)
+    self.taskqueue_serviceTime.append(t_s)
 
   ################################################
   #
@@ -193,6 +196,10 @@ class Node(Thread):
       if len(self.tsp_path) > 0:
         this_goal = self.taskqueue[self.tsp_path[0]]
         if (np.linalg.norm(this_goal - self.state) < self.reach_goal_eps):
+          # service the task
+          t_s = self.taskqueue_serviceTime.pop(self.tsp_path[0])
+          time.sleep(t_s)
+
           self.past_tasks.append(self.taskqueue[self.tsp_path[0]])
           self.taskqueue.pop(self.tsp_path[0])
           task_id = self.tsp_path.pop(0)
@@ -210,5 +217,7 @@ class Node(Thread):
       # FCFS, no TSP
       this_goal = self.taskqueue[0]
       if (np.linalg.norm(this_goal - self.state) < self.reach_goal_eps):
+        t_s = self.taskqueue_serviceTime.pop(0)
+        time.sleep(t_s)
         self.taskqueue.pop(0)
         print("%d: Task done! Starting new task" % self.uid)
