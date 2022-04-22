@@ -132,6 +132,10 @@ class Node(Thread):
       self.systemdynamics_m_sqm()
     elif self.current_mode == self.mode_random:
       self.systemdynamics_fcfs()
+    elif self.current_mode == self.mode_fcfs:
+      self.systemdynamics_fcfs()
+    else:
+      raise NotImplementedError("Current mode is not supported")
 
   def updategoal(self):
     """ Updates goal to the next goal if this one has been reached """
@@ -162,12 +166,14 @@ class Node(Thread):
       this_goal = self.taskqueue[self.tsp_path[0]]
       velocity = this_goal - self.state
       velocity = velocity * (self.speed / np.linalg.norm(velocity))
-      self.state = self.state + self.nominaldt * velocity
+      if np.linalg.norm(this_goal - self.state) > self.reach_goal_eps:
+        self.state = self.state + self.nominaldt * velocity
     elif len(self.taskqueue) == 0 and len(self.past_tasks) > 0:
       this_goal = np.mean(np.stack(self.past_tasks), axis=0)
       velocity = this_goal - self.state
       velocity = velocity * (self.speed / np.linalg.norm(velocity))
-      self.state = self.state + self.nominaldt * velocity
+      if np.linalg.norm(this_goal - self.state) > self.reach_goal_eps:
+        self.state = self.state + self.nominaldt * velocity
 
   def systemdynamics_m_sqm(self):
     # 1. If taskqueue is NOT empty, visit next task;
@@ -187,7 +193,7 @@ class Node(Thread):
     if (len(self.taskqueue) > 0):
       this_goal = self.taskqueue[0]
       velocity = this_goal - self.state
-      velocity = velocity(self.speed / np.linalg.norm(velocity))
+      velocity = velocity * (self.speed / np.linalg.norm(velocity))
 
       self.state = self.state + self.nominaldt * velocity
 
