@@ -23,7 +23,7 @@ class Node(Thread):
 
     self.nominaldt = 0.05  # desired time step
     self.dt = 0  # time step
-    self.eps = 0.1  # threshold to decide whether goal is reached
+    self.reach_goal_eps = 0.1  # threshold to decide whether goal is reached
 
     self.taskqueue = []  # list of tasks to perform in order
     self.hub = np.zeros(2)
@@ -175,7 +175,7 @@ class Node(Thread):
     if np.linalg.norm(velocity) > 0:
       velocity = velocity / np.linalg.norm(velocity)
 
-    if np.linalg.norm(this_goal - self.state) > self.eps:
+    if np.linalg.norm(this_goal - self.state) > self.reach_goal_eps:
       self.state = self.state + self.nominaldt * velocity
 
   def systemdynamics_fcfs(self):
@@ -192,7 +192,7 @@ class Node(Thread):
       # 2. If TSP path is empty (finished/not computed), compute new TSP path
       if len(self.tsp_path) > 0:
         this_goal = self.taskqueue[self.tsp_path[0]]
-        if (np.linalg.norm(this_goal - self.state) < self.eps):
+        if (np.linalg.norm(this_goal - self.state) < self.reach_goal_eps):
           self.past_tasks.append(self.taskqueue[self.tsp_path[0]])
           self.taskqueue.pop(self.tsp_path[0])
           task_id = self.tsp_path.pop(0)
@@ -209,6 +209,6 @@ class Node(Thread):
     if len(self.taskqueue) > 0:
       # FCFS, no TSP
       this_goal = self.taskqueue[0]
-      if (np.linalg.norm(this_goal - self.state) < self.eps):
+      if (np.linalg.norm(this_goal - self.state) < self.reach_goal_eps):
         self.taskqueue.pop(0)
         print("%d: Task done! Starting new task" % self.uid)
