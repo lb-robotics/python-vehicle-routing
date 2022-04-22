@@ -23,6 +23,7 @@ class Node(Thread):
 
     self.nominaldt = 0.05  # desired time step
     self.dt = 0  # time step
+    self.eps = 0.1  # threshold to decide whether goal is reached
 
     self.taskqueue = []  # list of tasks to perform in order
     self.hub = np.zeros(2)
@@ -121,62 +122,18 @@ class Node(Thread):
   def systemdynamics(self):
     """ Move the vehicle towards the goal """
     if self.current_mode == self.mode_dc:
-      # 1. If taskqueue is NOT empty, visit next TSP waypoint;
-      # 2. If taskqueue is empty, return back to centroid of all past tasks
-      if len(self.taskqueue) > 0 and len(self.tsp_path) > 0:
-        this_goal = self.taskqueue[self.tsp_path[0]]
-        velocity = this_goal - self.state
-        velocity = velocity / np.linalg.norm(velocity)
-        self.state = self.state + self.nominaldt * velocity
-      elif len(self.taskqueue) == 0 and len(self.past_tasks) > 0:
-        this_goal = np.mean(np.stack(self.past_tasks), axis=0)
-        velocity = this_goal - self.state
-        velocity = velocity / np.linalg.norm(velocity)
-        self.state = self.state + self.nominaldt * velocity
+      self.systemdynamics_dc()
     elif self.current_mode == self.mode_m_sqm:
-      # 1. If taskqueue is NOT empty, visit next task;
-      # 2. If taskqueue is empty, return back to hub
-      if len(self.taskqueue) > 0:
-        this_goal = self.taskqueue[0]
-      else:
-        this_goal = self.hub
-      velocity = this_goal - self.state
-      if np.linalg.norm(velocity) > 0:
-        velocity = velocity / np.linalg.norm(velocity)
-      self.state = self.state + self.nominaldt * velocity
-    elif (len(self.taskqueue) > 0):
-      this_goal = self.taskqueue[0]
-      velocity = this_goal - self.state
-      velocity = velocity / np.linalg.norm(velocity)
-
-      self.state = self.state + self.nominaldt * velocity
+      self.systemdynamics_m_sqm()
+    elif self.current_mode == self.mode_random:
+      self.systemdynamics_fcfs()
 
   def updategoal(self):
     """ Updates goal to the next goal if this one has been reached """
-    if (len(self.taskqueue) > 0):
-      if self.current_mode == self.mode_dc:
-        # 1. If TSP path is computed, visit next TSP waypoint;
-        # 2. If TSP path is empty (finished/not computed), compute new TSP path
-        if len(self.tsp_path) > 0:
-          this_goal = self.taskqueue[self.tsp_path[0]]
-          if (np.linalg.norm(this_goal - self.state) < 0.1):
-            self.past_tasks.append(self.taskqueue[self.tsp_path[0]])
-            self.taskqueue.pop(self.tsp_path[0])
-            task_id = self.tsp_path.pop(0)
-
-            path = np.array(self.tsp_path)
-            path[path > task_id] = path[path > task_id] - 1
-            self.tsp_path = path.tolist()
-
-            print("%d: Task done! Starting new task" % self.uid)
-        else:
-          self.compute_tsp()
-      else:
-        # FCFS, no TSP
-        this_goal = self.taskqueue[0]
-        if (np.linalg.norm(this_goal - self.state) < 0.1):
-          self.taskqueue.pop(0)
-          print("%d: Task done! Starting new task" % self.uid)
+    if self.current_mode == self.mode_dc:
+      self.updategoal_dc()
+    else:
+      self.updategoal_fcfs()
 
   def compute_tsp(self):
     """ Computes a TSP path over all tasks in the taskqueue """
@@ -192,3 +149,66 @@ class Node(Thread):
       self.tsp_path = solve_tsp(dist_matrix)
     else:
       self.tsp_path.append(0)
+
+  def systemdynamics_dc(self):
+    # 1. If taskqueue is NOT empty, visit next TSP waypoint;
+    # 2. If taskqueue is empty, return back to centroid of all past tasks
+    if len(self.taskqueue) > 0 and len(self.tsp_path) > 0:
+      this_goal = self.taskqueue[self.tsp_path[0]]
+      velocity = this_goal - self.state
+      velocity = velocity / np.linalg.norm(velocity)
+      self.state = self.state + self.nominaldt * velocity
+    elif len(self.taskqueue) == 0 and len(self.past_tasks) > 0:
+      this_goal = np.mean(np.stack(self.past_tasks), axis=0)
+      velocity = this_goal - self.state
+      velocity = velocity / np.linalg.norm(velocity)
+      self.state = self.state + self.nominaldt * velocity
+
+  def systemdynamics_m_sqm(self):
+    # 1. If taskqueue is NOT empty, visit next task;
+    # 2. If taskqueue is empty, return back to hub
+    if len(self.taskqueue) > 0:
+      this_goal = self.taskqueue[0]
+    else:
+      this_goal = self.hub
+    velocity = this_goal - self.state
+    if np.linalg.norm(velocity) > 0:
+      velocity = velocity / np.linalg.norm(velocity)
+
+    if np.linalg.norm(this_goal - self.state) > self.eps:
+      self.state = self.state + self.nominaldt * velocity
+
+  def systemdynamics_fcfs(self):
+    if (len(self.taskqueue) > 0):
+      this_goal = self.taskqueue[0]
+      velocity = this_goal - self.state
+      velocity = velocity / np.linalg.norm(velocity)
+
+      self.state = self.state + self.nominaldt * velocity
+
+  def updategoal_dc(self):
+    if len(self.taskqueue) > 0:
+      # 1. If TSP path is computed, visit next TSP waypoint;
+      # 2. If TSP path is empty (finished/not computed), compute new TSP path
+      if len(self.tsp_path) > 0:
+        this_goal = self.taskqueue[self.tsp_path[0]]
+        if (np.linalg.norm(this_goal - self.state) < self.eps):
+          self.past_tasks.append(self.taskqueue[self.tsp_path[0]])
+          self.taskqueue.pop(self.tsp_path[0])
+          task_id = self.tsp_path.pop(0)
+
+          path = np.array(self.tsp_path)
+          path[path > task_id] = path[path > task_id] - 1
+          self.tsp_path = path.tolist()
+
+          print("%d: Task done! Starting new task" % self.uid)
+      else:
+        self.compute_tsp()
+
+  def updategoal_fcfs(self):
+    if len(self.taskqueue) > 0:
+      # FCFS, no TSP
+      this_goal = self.taskqueue[0]
+      if (np.linalg.norm(this_goal - self.state) < self.eps):
+        self.taskqueue.pop(0)
+        print("%d: Task done! Starting new task" % self.uid)
