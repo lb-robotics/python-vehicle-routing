@@ -1,5 +1,6 @@
 from threading import Thread
 from queue import Empty
+from xml.sax.handler import DTDHandler
 import numpy as np
 import time
 from tsp_solver.greedy_numpy import solve_tsp
@@ -23,7 +24,8 @@ class Node(Thread):
 
     self.nominaldt = 0.05  # desired time step
     self.dt = 0  # time step
-    self.reach_goal_eps = 0.1  # threshold to decide whether goal is reached
+    self.speed = 0.5
+    self.reach_goal_eps = 0.05  # threshold to decide whether goal is reached
 
     self.taskqueue = []  # list of tasks to perform in order
     self.taskqueue_serviceTime = []
@@ -159,12 +161,12 @@ class Node(Thread):
     if len(self.taskqueue) > 0 and len(self.tsp_path) > 0:
       this_goal = self.taskqueue[self.tsp_path[0]]
       velocity = this_goal - self.state
-      velocity = velocity / np.linalg.norm(velocity)
+      velocity = velocity * (self.speed / np.linalg.norm(velocity))
       self.state = self.state + self.nominaldt * velocity
     elif len(self.taskqueue) == 0 and len(self.past_tasks) > 0:
       this_goal = np.mean(np.stack(self.past_tasks), axis=0)
       velocity = this_goal - self.state
-      velocity = velocity / np.linalg.norm(velocity)
+      velocity = velocity * (self.speed / np.linalg.norm(velocity))
       self.state = self.state + self.nominaldt * velocity
 
   def systemdynamics_m_sqm(self):
@@ -176,7 +178,7 @@ class Node(Thread):
       this_goal = self.hub
     velocity = this_goal - self.state
     if np.linalg.norm(velocity) > 0:
-      velocity = velocity / np.linalg.norm(velocity)
+      velocity = velocity * (self.speed / np.linalg.norm(velocity))
 
     if np.linalg.norm(this_goal - self.state) > self.reach_goal_eps:
       self.state = self.state + self.nominaldt * velocity
@@ -185,7 +187,7 @@ class Node(Thread):
     if (len(self.taskqueue) > 0):
       this_goal = self.taskqueue[0]
       velocity = this_goal - self.state
-      velocity = velocity / np.linalg.norm(velocity)
+      velocity = velocity(self.speed / np.linalg.norm(velocity))
 
       self.state = self.state + self.nominaldt * velocity
 
