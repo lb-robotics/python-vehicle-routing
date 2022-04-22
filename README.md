@@ -1,6 +1,14 @@
 # python-vehicle-routing
 Python implementation of Dynamic Vehicle Routing (DVR) algorithms
 
+|    m-SQM Policy    | First-Come-First-Serve |
+| :----------------: | :--------------------: |
+| ![](img/m_sqm.gif) |   ![](img/fcfs.gif)    |
+
+| Divide-and-Conquer |  Random Assignment  |
+| :----------------: | :-----------------: |
+|  ![](img/dc.gif)   | ![](img/random.gif) |
+
 ## Supported Platform:
 - Anaconda on Ubuntu 20.04 LTS
 - Miniforge on Apple M1 Mac
@@ -21,6 +29,7 @@ python src/main.py
 This repo reviews the following DVR algorithms:
 * Random assignment (vanilla)
 * First-Come-First-Serve (FCFS)
+* m-SQM
 * Divide-and-Conquer (DC)
 
 ## References
