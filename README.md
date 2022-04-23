@@ -1,17 +1,13 @@
 # python-vehicle-routing
 Python implementation of Dynamic Vehicle Routing (DVR) algorithms
 
-|    m-SQM Policy    | First-Come-First-Serve |
-| :----------------: | :--------------------: |
-| ![](img/m_sqm.gif) |   ![](img/fcfs.gif)    |
+ |  Random Assignment  | First-Come-First-Serve |
+ | :-----------------: | :--------------------: |
+ | ![](img/random.gif) |   ![](img/fcfs.gif)    |
 
-| Divide-and-Conquer |  Random Assignment  |
-| :----------------: | :-----------------: |
-|  ![](img/dc.gif)   | ![](img/random.gif) |
-
-| UTSP (queue size = 5) | To be continued... |
-| :-------------------: | :----------------: |
-|   ![](img/utsp.gif)   |        ...         |
+|    m-SQM Policy    | UTSP (queue size = 5) |
+| :----------------: | :-------------------: |
+| ![](img/m_sqm.gif) |   ![](img/utsp.gif)   |
 
 ## Supported Platform:
 - Anaconda on Ubuntu 20.04 LTS
@@ -33,8 +29,7 @@ python src/main.py
 This repo reviews the following DVR algorithms:
 * Random assignment (vanilla)
 * First-Come-First-Serve (FCFS)
-* Divide-and-Conquer (DC)
-* m-SQM
+* m-SQM (Stochastic Queue Median) policy
 * UTSP (Unbiased Traveling Salesman Problem) policy
 
 ## References
