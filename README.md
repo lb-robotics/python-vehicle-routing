@@ -9,6 +9,10 @@ Python implementation of Dynamic Vehicle Routing (DVR) algorithms
 | :----------------: | :-----------------: |
 |  ![](img/dc.gif)   | ![](img/random.gif) |
 
+| UTSP (queue size = 5) | To be continued... |
+| :-------------------: | :----------------: |
+|   ![](img/utsp.gif)   |        ...         |
+
 ## Supported Platform:
 - Anaconda on Ubuntu 20.04 LTS
 - Miniforge on Apple M1 Mac
@@ -29,8 +33,9 @@ python src/main.py
 This repo reviews the following DVR algorithms:
 * Random assignment (vanilla)
 * First-Come-First-Serve (FCFS)
-* m-SQM
 * Divide-and-Conquer (DC)
+* m-SQM
+* UTSP (Unbiased Traveling Salesman Problem) policy
 
 ## References
 - Visualization framework from MEAM 624: Distributed Robotics, University of Pennsylvania, Spring 2022.
