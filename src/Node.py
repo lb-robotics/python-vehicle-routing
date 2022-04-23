@@ -36,9 +36,11 @@ class Node(Thread):
     self.mode_fcfs = 'fcfs'  # first-come-first-serve
     self.mode_dc = 'dc'  # divide-and-conquer
     self.mode_m_sqm = 'm_sqm'  # m-SQM
+    self.mode_utsp = 'utsp'  # UTSP
 
     self.available_modes = [
-        self.mode_random, self.mode_fcfs, self.mode_dc, self.mode_m_sqm
+        self.mode_random, self.mode_fcfs, self.mode_dc, self.mode_m_sqm,
+        self.mode_utsp
     ]
     self.current_mode = mode
 
@@ -51,6 +53,9 @@ class Node(Thread):
     # Divide and Conquer
     self.tsp_path = []
     self.past_tasks = []
+
+    # UTSP
+    self.taskset_size = -1
 
   def __str__(self):
     """ Printing """
@@ -102,6 +107,18 @@ class Node(Thread):
     self.taskqueue.append(t_loc)
     self.taskqueue_serviceTime.append(t_s)
 
+  def assignTasks(self, ts: list):
+    """ Add a list of tasks to the queue (specifically for UTSP) """
+    if self.current_mode != self.mode_utsp:
+      raise RuntimeError(
+          "Node in mode [%s] is not supposed to use this function" %
+          self.current_mode)
+    if self.taskset_size < 0:
+      self.taskset_size = len(ts)
+    for t_loc, t_s in ts:
+      self.taskqueue.append(t_loc)
+      self.taskqueue_serviceTime.append(t_s)
+
   ################################################
   #
   # Run the vehicle
@@ -129,6 +146,8 @@ class Node(Thread):
       self.systemdynamics_fcfs()
     elif self.current_mode == self.mode_fcfs:
       self.systemdynamics_fcfs()
+    elif self.current_mode == self.mode_utsp:
+      self.systemdynamics_utsp()
     else:
       raise NotImplementedError("Current mode is not supported")
 
@@ -136,6 +155,8 @@ class Node(Thread):
     """ Updates goal to the next goal if this one has been reached """
     if self.current_mode == self.mode_dc:
       self.updategoal_dc()
+    elif self.current_mode == self.mode_utsp:
+      self.updategoal_utsp()
     else:
       self.updategoal_fcfs()
 
@@ -192,6 +213,16 @@ class Node(Thread):
 
       self.state = self.state + self.nominaldt * velocity
 
+  def systemdynamics_utsp(self):
+    # 1. If taskqueue is NOT empty, visit next TSP waypoint;
+    # 2. If taskqueue is empty, return back to centroid of all past tasks
+    if len(self.taskqueue) > 0 and len(self.tsp_path) > 0:
+      this_goal = self.taskqueue[self.tsp_path[0]]
+      velocity = this_goal - self.state
+      velocity = velocity * (self.speed / np.linalg.norm(velocity))
+      if np.linalg.norm(this_goal - self.state) > self.reach_goal_eps:
+        self.state = self.state + self.nominaldt * velocity
+
   def updategoal_dc(self):
     if len(self.taskqueue) > 0:
       # 1. If TSP path is computed, visit next TSP waypoint;
@@ -224,3 +255,27 @@ class Node(Thread):
         time.sleep(t_s)
         self.taskqueue.pop(0)
         print("%d: Task done! Starting new task" % self.uid)
+
+  def updategoal_utsp(self):
+    if len(self.taskqueue) > 0:
+      # 1. If TSP path is computed, visit next TSP waypoint;
+      # 2. If TSP path is empty (finished/not computed), compute new TSP path
+      if len(self.tsp_path) > 0:
+        this_goal = self.taskqueue[self.tsp_path[0]]
+        if (np.linalg.norm(this_goal - self.state) < self.reach_goal_eps):
+          # service the task
+          t_s = self.taskqueue_serviceTime.pop(self.tsp_path[0])
+          time.sleep(t_s)
+
+          self.past_tasks.append(self.taskqueue[self.tsp_path[0]])
+          self.taskqueue.pop(self.tsp_path[0])
+          task_id = self.tsp_path.pop(0)
+
+          path = np.array(self.tsp_path)
+          path[path > task_id] = path[path > task_id] - 1
+          self.tsp_path = path.tolist()
+
+          # print("%d: Task done! Starting new task" % self.uid)
+      else:
+        if len(self.taskqueue) == self.taskset_size:
+          self.compute_tsp()

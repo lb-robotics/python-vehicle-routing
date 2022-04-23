@@ -30,9 +30,11 @@ class Graph:
     self.mode_fcfs = 'fcfs'  # first-come-first-serve
     self.mode_dc = 'dc'  # divide-and-conquer
     self.mode_m_sqm = 'm_sqm'  # m-SQM
+    self.mode_utsp = 'utsp'  # UTSP
 
     self.available_modes = [
-        self.mode_random, self.mode_fcfs, self.mode_dc, self.mode_m_sqm
+        self.mode_random, self.mode_fcfs, self.mode_dc, self.mode_m_sqm,
+        self.mode_utsp
     ]
     self.current_mode = mode
 
@@ -41,6 +43,9 @@ class Graph:
       raise NotImplementedError(
           'Current assignment mode is not supported: %s' % self.current_mode)
     ####################################
+
+    # for UTSP num active tasks calculation
+    self.utsp_num_remaining_tasks = -1
 
     # for reading in graphs if they come from a file
     if not (filename is None):
@@ -130,8 +135,9 @@ class Graph:
     x = []
     y = []
     for i in range(self.Nv):
-      if self.V[i].current_mode == self.mode_dc and len(
-          self.V[i].tsp_path) > 0 and len(self.V[i].taskqueue) > 0:
+      if (self.V[i].current_mode == self.mode_dc
+          or self.current_mode == self.mode_utsp) and len(
+              self.V[i].tsp_path) > 0 and len(self.V[i].taskqueue) > 0:
         x.append(self.V[i].taskqueue[self.V[i].tsp_path[0]][0])
         y.append(self.V[i].taskqueue[self.V[i].tsp_path[0]][1])
       elif (len(self.V[i].taskqueue) > 0):
@@ -144,6 +150,10 @@ class Graph:
     num_active_tasks = 0
     for i in range(self.Nv):
       num_active_tasks += len(self.V[i].taskqueue)
+
+    if self.current_mode == self.mode_utsp:
+      num_active_tasks += self.utsp_num_remaining_tasks
+
     return num_active_tasks
 
   def setupAnimation(self):
@@ -165,3 +175,15 @@ class Graph:
 
     self.num_active_tasks.append(self.gatherNumActiveTasks())
     return self.pts,
+
+  def draw_wedges_utsp(self, depot: np.ndarray, angles: np.ndarray):
+    ymin, ymax = self.ax.get_ylim()
+    x0, y0 = depot
+    for angle in angles:
+      m = np.tan(angle)
+      if angle >= 0:
+        xmax = x0 + (ymax - y0) / m
+        self.ax.plot([xmax, x0], [ymax, y0], '--')
+      else:
+        xmin = x0 + (ymin - y0) / m
+        self.ax.plot([xmin, x0], [ymin, y0], '--')
