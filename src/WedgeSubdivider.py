@@ -74,10 +74,9 @@ class WedgeSubdivider:
     list_angles = [start_theta]
     while start_theta < np.pi:
       end_theta = start_theta
-      while np.sum(
-          np.logical_and(points_polar[1] >= start_theta,
-                         points_polar[1] <= end_theta)) / num_points < (
-                             1 / self.num_wedges) and end_theta < np.pi:
+      while end_theta < np.pi and np.sum(
+          np.logical_and(points_polar[1] >= start_theta, points_polar[1] <=
+                         end_theta)) < (num_points / self.num_wedges):
         end_theta += self.dTheta
       if end_theta < np.pi:
         list_angles.append(end_theta)
