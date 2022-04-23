@@ -32,12 +32,7 @@ class Tasks(Thread):
     self.current_mode = mode
 
     # sanity check
-    mode_recognized = False
-    for available_mode in self.available_modes:
-      if self.current_mode == available_mode:
-        mode_recognized = True
-        break
-    if not mode_recognized:
+    if mode not in self.available_modes:
       raise NotImplementedError(
           'Current assignment mode is not supported: %s' % self.current_mode)
 
