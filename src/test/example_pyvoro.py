@@ -11,13 +11,14 @@ if __name__ == '__main__':
 
   num_samples = 10
   generators = np.random.uniform(low=2., high=8., size=(num_samples, 2))
-  radius = np.array([0, 0, 0, 0, 0, 0])
+  radius = np.random.rand(num_samples)
 
   cells = pyvoro.compute_2d_voronoi(
-      generators,  # point positions, 2D vectors this time.
+      generators.tolist(),  # point positions, 2D vectors this time.
       [[0.0, 10.0], [0.0, 10.0]],  # box size, again only 2D this time.
       0.1,  # block size; same as before.
-      radii=radius  # particle radii -- optional and keyword-compatible.
+      radii=np.sqrt(radius).tolist(
+      )  # particle radii -- optional and keyword-compatible.
   )
 
   import json
