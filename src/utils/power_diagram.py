@@ -235,9 +235,6 @@ def main():
   # Compute the Voronoi cells
   voronoi_cell_map = get_voronoi_cells(S, V, tri_list)
 
-  import ipdb
-  ipdb.set_trace()
-
   # Display the result
   display(S, R, tri_list, voronoi_cell_map)
 
