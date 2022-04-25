@@ -33,6 +33,26 @@ class EquitablePartitioner:
 
     # area to partition
     self.xy_minmax = np.stack([np.array(xy_min), np.array(xy_max)])
+    self.cells = None
+
+  def getLineCollections(self) -> list:
+    """ Get current Voronoi cells for animation """
+    line_list = []
+    if self.cells is not None:
+      for cell in self.cells:
+        vertices = cell['vertices']
+        for face in cell['faces']:
+          line_list.append(
+              (vertices[face['vertices'][0]], vertices[face['vertices'][1]]))
+    return line_list
+
+  def getGenerators(self) -> np.ndarray:
+    return self.generators
+
+  def getVertices(self, gid: int) -> np.ndarray:
+    """ Returns the vertices of the partition corresponding to some cell id """
+    gid_cell = self.cells[gid]
+    return np.stack(gid_cell["vertices"])
 
   def setGenerators(self, generators: np.ndarray):
     """ Sets the locations of generators. The locations of generators are fixed. """
@@ -73,6 +93,7 @@ class EquitablePartitioner:
         radii=np.sqrt(self.radii))
     gid_cell = cells[gid]
     assert np.all(gid_cell["original"] == self.generators[gid])
+    self.cells = cells
 
     # 2. computes parameters
     lambda_Q = 1  # integral of prob. distribution over entire region is always 1
