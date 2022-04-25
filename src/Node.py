@@ -67,9 +67,9 @@ class Node(Thread):
     self.past_tasks = []
     self.done_partition = False  # self partitioning termination flag
     self.all_done_partition = False  # all nodes partitioning termination flag
-    self.partition_eps = 1e-4  # threshold to decide whether weight has reached critical point
-    self.partition_weight = 1.0  # for power diagram partitioning
-    self.partition_stepsize = 0.05  # for weight computation gradient descent
+    self.partition_eps = 4e-6  # threshold to decide whether weight has reached critical point
+    self.partition_weight = 0.009  # for power diagram partitioning
+    self.partition_stepsize = 0.01  # for weight computation gradient descent
     self.partition_vertices = None  # vertex of the designated partition, should be Mx2
     self.partitioner = None
 
@@ -362,10 +362,11 @@ class Node(Thread):
         self.partitioner.updateRadii(radii)
       grad_w = self.partitioner.computeGrad(self.uid)
 
-      if norm(grad_w * self.partition_stepsize) < self.partition_eps:
+      new_partition_weight = self.partition_weight - grad_w * self.partition_stepsize
+      if norm(self.partition_weight -
+              new_partition_weight) < self.partition_eps:
         print("Node %d done partitioning!" % self.uid)
         self.done_partition = True
         self.partition_vertices = self.partitioner.getVertices(self.uid)
       else:
-        self.partition_weight = np.clip(
-            self.partition_weight - grad_w * self.partition_stepsize, 0, None)
+        self.partition_weight = new_partition_weight

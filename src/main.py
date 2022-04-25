@@ -51,7 +51,7 @@ if __name__ == '__main__':
   list_available_modes = ['random', 'fcfs', 'dc', 'm_sqm', 'utsp']
   current_mode = 'utsp'
 
-  # generate a random graph with 10 nodes
+  # generate a random graph with 10 nodes, when in dc 5 is maximum
   G = generateRandomGraph(10, mode=current_mode)
 
   # set up thread for generating and assigning tasks

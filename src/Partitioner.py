@@ -54,6 +54,16 @@ class EquitablePartitioner:
     gid_cell = self.cells[gid]
     return np.stack(gid_cell["vertices"])
 
+  def getAllAreas(self) -> np.ndarray:
+    """ Returns volumes of all cells """
+    if self.cells is None:
+      return None
+
+    areas = []
+    for cell in self.cells:
+      areas.append(cell["volume"])
+    return np.array(areas)
+
   def setGenerators(self, generators: np.ndarray):
     """ Sets the locations of generators. The locations of generators are fixed. """
     assert (generators.shape[1] == 2)
@@ -85,12 +95,11 @@ class EquitablePartitioner:
     \partial H/\partial w_i = |Q|/(2*lambda_Q) * sum_{j \in N_i}(delta_ij/gamma_ij * (1/|V_j|**2 - 1/|V_i|**2))
     """
     # 1. generate power diagram based on current generators and values
-    assert np.all(self.radii >= 0)
     cells = pyvoro.compute_2d_voronoi(
         self.generators,
         [self.xy_minmax[:, 0].tolist(), self.xy_minmax[:, 1].tolist()],
         0.05,
-        radii=np.sqrt(self.radii))
+        radii=np.sqrt(self.radii - np.min(self.radii)))
     gid_cell = cells[gid]
     assert np.all(gid_cell["original"] == self.generators[gid])
     self.cells = cells

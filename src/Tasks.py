@@ -46,23 +46,25 @@ class Tasks(Thread):
 
     # ########### UTSP Policy ###########
     # define parameters
-    self.utsp_r = 10  # r, number of wedges
-    self.tasksetqueue = []  # list of list (task set), each set is of size n/r
-    self.tasks_remained = None  # list of remained tasks per wedge, excluding those in taskqueue
-
-    distributionCalculator = RootSquareDistributionCalculator(
-        np.zeros(2), [-1, -1], [1, 1], 'uniform')
-    rootSquareDistribution = distributionCalculator.calculate()
-    rho = self.lambda_p * self.mean_s / G.Nv
-    # n, hyperparameter, set to the minimum number that ensures stability.
-    self.utsp_n = math.ceil(
-        ((self.lambda_p * BETA_TSP_2 * rootSquareDistribution)**2) /
-        ((G.Nv * G.V[0].speed * (1 - rho))**2))
-    self.taskset_size = self.utsp_n // self.utsp_r
-
-    # initialize wedge divider
-    self.utsp_wedge_angles = None
     if self.current_mode == self.mode_utsp:
+      self.utsp_r = 10  # r, number of wedges
+      self.tasksetqueue = [
+      ]  # list of list (task set), each set is of size n/r
+      self.tasks_remained = None  # list of remained tasks per wedge, excluding those in taskqueue
+
+      distributionCalculator = RootSquareDistributionCalculator(
+          np.zeros(2), [-1, -1], [1, 1], 'uniform')
+      rootSquareDistribution = distributionCalculator.calculate()
+      rho = self.lambda_p * self.mean_s / G.Nv
+      # n, hyperparameter, set to the minimum number that ensures stability.
+      self.utsp_n = math.ceil(
+          ((self.lambda_p * BETA_TSP_2 * rootSquareDistribution)**2) /
+          ((G.Nv * G.V[0].speed * (1 - rho))**2))
+      self.taskset_size = self.utsp_n // self.utsp_r
+
+      # initialize wedge divider
+      self.utsp_wedge_angles = None
+
       print('========== UTSP policy precomputation ==========')
       from WedgeSubdivider import WedgeSubdivider
       subdivider = WedgeSubdivider(np.zeros(2), self.utsp_r, [-1, -1], [1, 1],
