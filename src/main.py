@@ -26,19 +26,10 @@ def generateRandomGraph(N: int, mode='random') -> Graph:
     G.centroids = centroids
 
   for inode in range(N):
-    # randomly generate node states
-    n = Node(inode, mode)
+    n = Node(inode, [-1.5, -1.5], [1.5, 1.5], mode, dist_type='uniform')
 
-    if mode == 'dc':
-      # divide and conquer --- initialize each vehicle inside the designed partition
-      #
-      # Current designed partition:
-      #   Divide the entire space [-1,1]x[-1,1] into N wedges, centering at (0,0)
-      dTheta = 2 * np.pi / N
-      pol = np.array([1, -np.pi + inode * dTheta + dTheta / 2])  # rho, phi
-      xy = np.array([pol[0] * np.cos(pol[1]), pol[0] * np.sin(pol[1])])
-      n.setState(xy)
-    elif mode == 'm_sqm':
+    # generate node states
+    if mode == 'm_sqm':
       # m-SQM --- initialize each vehicle to be the m-median locations within the area
       n.setState(centroids[inode])
     else:
@@ -46,6 +37,11 @@ def generateRandomGraph(N: int, mode='random') -> Graph:
           np.multiply(np.random.rand(2), np.array([2, 2])) - np.array([1, 1]))
 
     G.addNode(n)
+
+    # add all-to-all edges
+    for iedge in range(inode):
+      G.addEdge(iedge, inode, 0)
+      G.addEdge(inode, iedge, 0)
 
   return G
 
