@@ -1,7 +1,4 @@
 import numpy as np
-from numpy.linalg import norm
-from torch import square
-from Sampler import PointSampler
 import math
 
 
