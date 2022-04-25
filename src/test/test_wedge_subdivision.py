@@ -15,7 +15,9 @@ if __name__ == '__main__':
   angles = subdivider.subdivide()
 
   plt.figure()
-  plt.axes(xlim=(-1, 1), ylim=(-1, 1))
+  ax = plt.axes(xlim=(-1, 1), ylim=(-1, 1))
+  ax.set_aspect('equal', 'box')
+  ax.scatter(points[:, 0], points[:, 1], c='#adadad')
 
   ymin, ymax = plt.gca().get_ylim()
   x0, y0 = depot
@@ -23,9 +25,9 @@ if __name__ == '__main__':
     m = np.tan(angle)
     if angle >= 0:
       xmax = x0 + (ymax - y0) / m
-      plt.plot([xmax, x0], [ymax, y0])
+      ax.plot([xmax, x0], [ymax, y0])
     else:
       xmin = x0 + (ymin - y0) / m
-      plt.plot([xmin, x0], [ymin, y0])
+      ax.plot([xmin, x0], [ymin, y0])
 
   plt.show()
