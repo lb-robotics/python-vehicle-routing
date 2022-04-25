@@ -32,8 +32,7 @@ class EquitablePartitioner:
     self.N = 0  # number of generators
 
     # area to partition
-    self.xy_min = np.array(xy_min)
-    self.xy_max = np.array(xy_max)
+    self.xy_minmax = np.stack([np.array(xy_min), np.array(xy_max)])
 
   def setGenerators(self, generators: np.ndarray):
     """ Sets the locations of generators. The locations of generators are fixed. """
@@ -46,7 +45,7 @@ class EquitablePartitioner:
     assert (len(radii) == self.N)
     self.radii = radii
 
-  def computeGrad(self, gid: int) -> np.ndarray:
+  def computeGrad(self, gid: int) -> float:
     """ Computes the gradient of energy function w.r.t. radius of generator gid. """
     if self.generators is None:
       raise ValueError("self.generators is not set")
@@ -59,25 +58,26 @@ class EquitablePartitioner:
       raise NotImplementedError(
           "Current distribution type is not supported: %s" % self.dist_type)
 
-  def computeGrad_uniform(self, gid: int) -> np.ndarray:
+  def computeGrad_uniform(self, gid: int) -> float:
     """
     Assuming uniform measure, computes equation (Example 3.6):
 
     \partial H/\partial w_i = |Q|/(2*lambda_Q) * sum_{j \in N_i}(delta_ij/gamma_ij * (1/|V_j|**2 - 1/|V_i|**2))
     """
     # 1. generate power diagram based on current generators and values
+    assert np.all(self.radii >= 0)
     cells = pyvoro.compute_2d_voronoi(
         self.generators,
-        [self.xy_min.tolist(), self.xy_max.tolist()],
-        0.1,
-        radii=self.radii)
+        [self.xy_minmax[:, 0].tolist(), self.xy_minmax[:, 1].tolist()],
+        0.05,
+        radii=np.sqrt(self.radii))
     gid_cell = cells[gid]
-    assert gid_cell["original"] == self.generators[gid]
+    assert np.all(gid_cell["original"] == self.generators[gid])
 
     # 2. computes parameters
     lambda_Q = 1  # integral of prob. distribution over entire region is always 1
 
-    dxy = self.xy_max - self.xy_min
+    dxy = self.xy_minmax[1] - self.xy_minmax[0]
     area_Q = dxy[0] * dxy[1]
 
     # 3. Sum over all adjacent cells
