@@ -9,13 +9,15 @@ if __name__ == '__main__':
   import pyvoro
   import numpy as np
 
+  x_limits = [-1.5, 1.5]
+  y_limits = [-1.5, 1.5]
   num_samples = 10
-  generators = np.random.uniform(low=2., high=8., size=(num_samples, 2))
+  generators = np.random.uniform(low=-1.3, high=1.3, size=(num_samples, 2))
   radius = np.random.rand(num_samples)
 
   cells = pyvoro.compute_2d_voronoi(
       generators.tolist(),  # point positions, 2D vectors this time.
-      [[0.0, 10.0], [0.0, 10.0]],  # box size, again only 2D this time.
+      [x_limits, y_limits],  # box size, again only 2D this time.
       0.1,  # block size; same as before.
       radii=np.sqrt(radius).tolist(
       )  # particle radii -- optional and keyword-compatible.
@@ -32,8 +34,8 @@ if __name__ == '__main__':
   from matplotlib.collections import LineCollection
 
   plt.figure()
-  ax = plt.axes(xlim=(0, 10), ylim=(0, 10))
-  ax.axis('equal')
+  ax = plt.axes(xlim=tuple(x_limits), ylim=tuple(y_limits))
+  ax.set_aspect('equal', 'box')
   ax.scatter(generators[:, 0], generators[:, 1])
   line_list = []
   for cell in cells:
