@@ -3,6 +3,7 @@ from Edge import *
 
 from matplotlib import pyplot as plt
 from matplotlib import animation
+from matplotlib.collections import LineCollection
 
 
 class Graph:
@@ -24,6 +25,9 @@ class Graph:
     self.pts, = self.ax.plot([], [], 'bo')
     self.pts_t, = self.ax.plot([], [], 'r*')
     self.anim = None
+    # for partitioning
+    self.lines = LineCollection([], linestyles="-.", color='green')
+    self.ax.add_collection(self.lines)
 
     ############### mode ###############
     self.mode_random = 'random'  # randoms
@@ -167,6 +171,9 @@ class Graph:
 
   def animate(self, i: int):
     """ Animation helper function """
+    if self.current_mode == self.mode_dc:
+      self.lines.set_segments(self.V[0].partitioner.getLineCollections())
+
     x, y = self.gatherNodeLocations()
     self.pts.set_data(x, y)
 
@@ -174,7 +181,7 @@ class Graph:
     self.pts_t.set_data(x, y)
 
     self.num_active_tasks.append(self.gatherNumActiveTasks())
-    return self.pts,
+    return self.pts, self.lines
 
   def draw_wedges_utsp(self, depot: np.ndarray, angles: np.ndarray):
     ymin, ymax = self.ax.get_ylim()
