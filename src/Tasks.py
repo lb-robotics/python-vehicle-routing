@@ -61,6 +61,9 @@ class Tasks(Thread):
           ((self.lambda_p * BETA_TSP_2 * rootSquareDistribution)**2) /
           ((G.Nv * G.V[0].speed * (1 - rho))**2))
       self.taskset_size = self.utsp_n // self.utsp_r
+      if self.taskset_size == 0:
+        self.taskset_size = 1
+        self.utsp_n = self.taskset_size * self.utsp_r
 
       # initialize wedge divider
       self.utsp_wedge_angles = None
