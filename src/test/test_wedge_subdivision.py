@@ -17,7 +17,6 @@ if __name__ == '__main__':
   plt.figure()
   ax = plt.axes(xlim=(-1, 1), ylim=(-1, 1))
   ax.set_aspect('equal', 'box')
-  ax.scatter(points[:, 0], points[:, 1], c='#adadad')
 
   ymin, ymax = plt.gca().get_ylim()
   x0, y0 = depot
