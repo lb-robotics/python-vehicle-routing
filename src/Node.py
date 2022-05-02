@@ -362,12 +362,13 @@ class Node(Thread):
         self.next_task = None
 
     # 3. Assign new task to vehicle
-    if self.next_task_tid < 0:
-      self.next_task_tid = global_taskqueue.getClosestTaskIdx(self.state)
-      if self.next_task_tid >= 0:
-        self.next_task = global_taskqueue.getTask(self.next_task_tid)
-      else:
-        self.next_task = None
+    self.next_task_tid = global_taskqueue.getClosestTaskIdx(self.state)
+    if self.next_task_tid >= 0:
+      self.next_task = global_taskqueue.getTask(self.next_task_tid)
+      if self.next_task is None:
+        self.next_task_tid = -1
+    else:
+      self.next_task = None
 
   def run_dc(self):
     """ Main loop for m-DC policy """

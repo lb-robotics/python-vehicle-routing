@@ -34,10 +34,10 @@ class GlobalTaskQueue:
 
   def getTask(self, tid: int) -> tuple:
     """ Reads the task with index [tid] from taskqueue. Invokes reader lock. """
-    t = None
     with self.lock.gen_rlock():
-      t = self.taskqueue[tid]
-    return t
+      if tid not in self.taskqueue:
+        return None
+      return self.taskqueue[tid]
 
   def getClosestTaskIdx(self, pos: np.ndarray) -> int:
     """
