@@ -10,6 +10,8 @@ from Partitioner import EquitablePartitioner
 
 from Edge import Edge
 
+from GlobalTaskQueue import global_taskqueue
+
 
 class Node(Thread):
 
@@ -49,10 +51,11 @@ class Node(Thread):
     self.mode_dc = 'dc'  # divide-and-conquer
     self.mode_m_sqm = 'm_sqm'  # m-SQM
     self.mode_utsp = 'utsp'  # UTSP
+    self.mode_nc = 'nc'  # No-Communication
 
     self.available_modes = [
         self.mode_random, self.mode_fcfs, self.mode_dc, self.mode_m_sqm,
-        self.mode_utsp
+        self.mode_utsp, self.mode_nc
     ]
     self.current_mode = mode
 
@@ -64,7 +67,7 @@ class Node(Thread):
 
     ################ Divide and Conquer ###############
     self.tsp_path = []
-    self.past_tasks = []
+    self.past_tasks = []  # will be re-used in No-Communication policy
     self.done_partition = False  # self partitioning termination flag
     self.all_done_partition = False  # all nodes partitioning termination flag
     self.partition_eps = 4e-6  # threshold to decide whether weight has reached critical point
@@ -80,6 +83,11 @@ class Node(Thread):
 
     # UTSP
     self.taskset_size = -1
+
+    ################ No-Communication ################
+    self.next_task = None  # a tuple of (t_loc, t_s)
+    self.next_task_tid = -1
+    ##################################################
 
   def __str__(self):
     """ Printing """
@@ -185,6 +193,8 @@ class Node(Thread):
       self.systemdynamics_fcfs()
     elif self.current_mode == self.mode_utsp:
       self.systemdynamics_utsp()
+    elif self.current_mode == self.mode_nc:
+      self.systemdynamics_nc()
     else:
       raise NotImplementedError("Current mode is not supported")
 
@@ -194,6 +204,8 @@ class Node(Thread):
       self.updategoal_dc()
     elif self.current_mode == self.mode_utsp:
       self.updategoal_utsp()
+    elif self.current_mode == self.mode_nc:
+      self.updategoal_nc()
     else:
       self.updategoal_fcfs()
 
@@ -260,6 +272,20 @@ class Node(Thread):
       if np.linalg.norm(this_goal - self.state) > self.reach_goal_eps:
         self.state = self.state + self.nominaldt * velocity
 
+  def systemdynamics_nc(self):
+    if self.next_task is None:
+      if not self.past_tasks:
+        return
+      this_goal = KMedian.geometric_median(np.stack(self.past_tasks))
+    else:
+      this_goal = self.next_task[0]
+
+    # forward system dynamics
+    velocity = this_goal - self.state
+    velocity = velocity * (self.speed / np.linalg.norm(velocity))
+    if np.linalg.norm(this_goal - self.state) > self.reach_goal_eps:
+      self.state = self.state + self.nominaldt * velocity
+
   def updategoal_dc(self):
     if self.done_partition and len(self.taskqueue) > 0:
       # 1. If TSP path is computed, visit next TSP waypoint;
@@ -316,6 +342,32 @@ class Node(Thread):
       else:
         if len(self.taskqueue) == self.taskset_size:
           self.compute_tsp()
+
+  def updategoal_nc(self):
+    # 1. Check if the goal task still exists
+    if self.next_task_tid >= 0 and not global_taskqueue.hasTask(
+        self.next_task_tid):
+      self.next_task_tid = -1
+      self.next_task = None
+
+    # 2. Check if the goal task has been reached
+    if self.next_task_tid >= 0:
+      this_goal, t_s = self.next_task
+      if (np.linalg.norm(this_goal - self.state) < self.reach_goal_eps):
+        t_loc, _ = global_taskqueue.finishTask(self.next_task_tid)
+        time.sleep(t_s)
+        print("%d: Task done! Starting new task" % self.uid)
+        self.past_tasks.append(t_loc)
+        self.next_task_tid = -1
+        self.next_task = None
+
+    # 3. Assign new task to vehicle
+    if self.next_task_tid < 0:
+      self.next_task_tid = global_taskqueue.getClosestTaskIdx(self.state)
+      if self.next_task_tid >= 0:
+        self.next_task = global_taskqueue.getTask(self.next_task_tid)
+      else:
+        self.next_task = None
 
   def run_dc(self):
     """ Main loop for m-DC policy """
