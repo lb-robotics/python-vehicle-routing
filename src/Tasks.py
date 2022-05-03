@@ -8,6 +8,8 @@ from RootSquareDistributionCalculator import RootSquareDistributionCalculator
 
 BETA_TSP_2 = 0.7120
 
+from utils.convex_hull import in_hull
+
 
 class Tasks(Thread):
 
@@ -44,23 +46,28 @@ class Tasks(Thread):
 
     # ########### UTSP Policy ###########
     # define parameters
-    self.utsp_r = 10  # r, number of wedges
-    self.tasksetqueue = []  # list of list (task set), each set is of size n/r
-    self.tasks_remained = None  # list of remained tasks per wedge, excluding those in taskqueue
-
-    distributionCalculator = RootSquareDistributionCalculator(
-        np.zeros(2), [-1, -1], [1, 1], 'uniform')
-    rootSquareDistribution = distributionCalculator.calculate()
-    rho = self.lambda_p * self.mean_s / G.Nv
-    # n, hyperparameter, set to the minimum number that ensures stability.
-    self.utsp_n = math.ceil(
-        ((self.lambda_p * BETA_TSP_2 * rootSquareDistribution)**2) /
-        ((G.Nv * G.V[0].speed * (1 - rho))**2))
-    self.taskset_size = self.utsp_n // self.utsp_r
-
-    # initialize wedge divider
-    self.utsp_wedge_angles = None
     if self.current_mode == self.mode_utsp:
+      self.utsp_r = 10  # r, number of wedges
+      self.tasksetqueue = [
+      ]  # list of list (task set), each set is of size n/r
+      self.tasks_remained = None  # list of remained tasks per wedge, excluding those in taskqueue
+
+      distributionCalculator = RootSquareDistributionCalculator(
+          np.zeros(2), [-1, -1], [1, 1], 'uniform')
+      rootSquareDistribution = distributionCalculator.calculate()
+      rho = self.lambda_p * self.mean_s / G.Nv
+      # n, hyperparameter, set to the minimum number that ensures stability.
+      self.utsp_n = math.ceil(
+          ((self.lambda_p * BETA_TSP_2 * rootSquareDistribution)**2) /
+          ((G.Nv * G.V[0].speed * (1 - rho))**2))
+      self.taskset_size = self.utsp_n // self.utsp_r
+      if self.taskset_size == 0:
+        self.taskset_size = 1
+        self.utsp_n = self.taskset_size * self.utsp_r
+
+      # initialize wedge divider
+      self.utsp_wedge_angles = None
+
       print('========== UTSP policy precomputation ==========')
       from WedgeSubdivider import WedgeSubdivider
       subdivider = WedgeSubdivider(np.zeros(2), self.utsp_r, [-1, -1], [1, 1],
@@ -71,6 +78,10 @@ class Tasks(Thread):
       self.tasks_remained = [[] for _ in range(self.utsp_r)]
       print('========== UTSP precomputation finished ==========')
       self.G.draw_wedges_utsp(np.zeros(2), self.utsp_wedge_angles)
+    # ###################################
+
+    # ########### m-DC Policy ###########
+    self.dc_taskbuffer = []
     # ###################################
 
   #################################################################
@@ -135,14 +146,34 @@ class Tasks(Thread):
 
   def assignDC(self, t: tuple):
     # assign task to corresponding partition based on its coordinates
-    #
-    # Current designed partition:
-    #   Divide the entire space [-1,1]x[-1,1] into self.G.Nv wedges, centering at (0,0)
+    # 1. clear past, not-assigned tasks
+    tid = 0
+    while self.dc_taskbuffer and tid < len(self.dc_taskbuffer):
+      ti_assigned = False
+      ti_loc, _ = self.dc_taskbuffer[tid]
+      for inode in range(self.G.Nv):
+        if self.G.V[inode].done_partition and in_hull(
+            ti_loc, self.G.V[inode].partition_vertices):
+          self.G.V[inode].assignTask(self.dc_taskbuffer[tid])
+          self.dc_taskbuffer.pop(tid)
+          ti_assigned = True
+          break
+      if not ti_assigned:
+        tid += 1
+
+    # 2. assign new tasks
     t_loc, t_s = t
-    theta = np.arctan2(t_loc[1], t_loc[0])
-    dTheta = 2 * np.pi / self.G.Nv
-    target_inode = int(np.floor((theta - (-np.pi)) / dTheta))
-    self.G.V[target_inode].assignTask(t)
+    assigned = False
+
+    for inode in range(self.G.Nv):
+      if self.G.V[inode].done_partition and in_hull(
+          t_loc, self.G.V[inode].partition_vertices):
+        self.G.V[inode].assignTask(t)
+        assigned = True
+        break
+
+    if not assigned:
+      self.dc_taskbuffer.append(t)
 
   def assignUTSP(self, t: tuple):
     # 1. queue them up in each subdivided wedge based on location

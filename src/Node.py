@@ -1,16 +1,24 @@
 from threading import Thread
 from queue import Empty
-from xml.sax.handler import DTDHandler
 import numpy as np
+from numpy.linalg import norm
 import time
 from tsp_solver.greedy_numpy import solve_tsp
+
+from utils.k_median import KMedian
+from Partitioner import EquitablePartitioner
 
 from Edge import Edge
 
 
 class Node(Thread):
 
-  def __init__(self, uid, mode='random'):
+  def __init__(self,
+               uid,
+               xy_min: list,
+               xy_max: list,
+               mode='random',
+               dist_type='uniform'):
     """ Constructor """
     Thread.__init__(self)
 
@@ -18,6 +26,10 @@ class Node(Thread):
     self.uid = uid  # node UID (an integer)
     self.out_nbr = []  # list of outgoing edges (see Edge class)
     self.in_nbr = []  # list of incoming edges (see Edge class)
+
+    # boundary of the world
+    self.xy_min = xy_min
+    self.xy_max = xy_max
 
     self.state = np.array([0, 0])  # state vars of interest ([x, y])
     self.done = False  # termination flag
@@ -50,9 +62,21 @@ class Node(Thread):
           'Current assignment mode is not supported: %s' % self.current_mode)
     ####################################
 
-    # Divide and Conquer
+    ################ Divide and Conquer ###############
     self.tsp_path = []
     self.past_tasks = []
+
+    if self.current_mode == self.mode_dc:
+      self.done_partition = False  # self partitioning termination flag
+      self.all_done_partition = False  # all nodes partitioning termination flag
+      self.partition_eps = 4e-6  # threshold to decide whether weight has reached critical point
+      self.partition_weight = 0.009  # for power diagram partitioning
+      self.partition_stepsize = 0.01  # for weight computation gradient descent
+      self.partition_vertices = None  # vertex of the designated partition, should be Mx2
+      self.partitioner = None
+      self.partitioner = EquitablePartitioner(self.xy_min, self.xy_max,
+                                              dist_type)
+    ###################################################
 
     # UTSP
     self.taskset_size = -1
@@ -130,11 +154,24 @@ class Node(Thread):
     while (not self.done):
       start = time.time()
 
-      self.systemdynamics()
-      self.updategoal()
+      if self.current_mode == self.mode_dc:
+        self.run_dc()
+      else:
+        self.systemdynamics()
+        self.updategoal()
 
       end = time.time()
       time.sleep(max(self.nominaldt - (end - start), 0))
+
+  def send(self):
+    """ Send messages """
+    if self.current_mode == self.mode_dc:
+      self.send_dc()
+
+  def transition(self):
+    """ Update the states based on comms """
+    if self.current_mode == self.mode_dc:
+      self.transition_dc()
 
   def systemdynamics(self):
     """ Move the vehicle towards the goal """
@@ -185,7 +222,7 @@ class Node(Thread):
       if np.linalg.norm(this_goal - self.state) > self.reach_goal_eps:
         self.state = self.state + self.nominaldt * velocity
     elif len(self.taskqueue) == 0 and len(self.past_tasks) > 0:
-      this_goal = np.mean(np.stack(self.past_tasks), axis=0)
+      this_goal = KMedian.geometric_median(np.stack(self.past_tasks))
       velocity = this_goal - self.state
       velocity = velocity * (self.speed / np.linalg.norm(velocity))
       if np.linalg.norm(this_goal - self.state) > self.reach_goal_eps:
@@ -224,7 +261,7 @@ class Node(Thread):
         self.state = self.state + self.nominaldt * velocity
 
   def updategoal_dc(self):
-    if len(self.taskqueue) > 0:
+    if self.done_partition and len(self.taskqueue) > 0:
       # 1. If TSP path is computed, visit next TSP waypoint;
       # 2. If TSP path is empty (finished/not computed), compute new TSP path
       if len(self.tsp_path) > 0:
@@ -279,3 +316,57 @@ class Node(Thread):
       else:
         if len(self.taskqueue) == self.taskset_size:
           self.compute_tsp()
+
+  def run_dc(self):
+    """ Main loop for m-DC policy """
+    if self.all_done_partition:
+      self.systemdynamics()
+      self.updategoal()
+    else:
+      self.send()
+      self.transition()
+
+  def send_dc(self):
+    """ m-DC policies sends uid, state, partitioning weight, done to all neighbors """
+    for onbr in self.out_nbr:
+      onbr.put(
+          (self.uid, self.state, self.partition_weight, self.done_partition))
+
+  def transition_dc(self):
+    generators = [None for _ in range(len(self.in_nbr) + 1)]
+    generators[self.uid] = self.state
+
+    radii = [None for _ in range(len(self.in_nbr) + 1)]
+    radii[self.uid] = self.partition_weight
+
+    partition_finish_nodes = [self.done_partition]
+
+    for inbr in self.in_nbr:
+      uid, generator, radius, done = inbr.get()
+      generators[uid] = generator
+      radii[uid] = radius
+      partition_finish_nodes.append(done)
+
+    generators = np.stack(generators)
+    radii = np.array(radii)
+    partition_finish_nodes = np.array(partition_finish_nodes)
+
+    if np.all(partition_finish_nodes):
+      self.all_done_partition = True
+
+    if not self.done_partition:
+      # continue to update partition
+      if self.partitioner.generators is None:
+        self.partitioner.setGenerators(generators)
+      if len(radii) > 0:
+        self.partitioner.updateRadii(radii)
+      grad_w = self.partitioner.computeGrad(self.uid)
+
+      new_partition_weight = self.partition_weight - grad_w * self.partition_stepsize
+      if norm(self.partition_weight -
+              new_partition_weight) < self.partition_eps:
+        print("Node %d done partitioning!" % self.uid)
+        self.done_partition = True
+        self.partition_vertices = self.partitioner.getVertices(self.uid)
+      else:
+        self.partition_weight = new_partition_weight
