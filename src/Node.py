@@ -65,15 +65,15 @@ class Node(Thread):
     ################ Divide and Conquer ###############
     self.tsp_path = []
     self.past_tasks = []
-    self.done_partition = False  # self partitioning termination flag
-    self.all_done_partition = False  # all nodes partitioning termination flag
-    self.partition_eps = 4e-6  # threshold to decide whether weight has reached critical point
-    self.partition_weight = 0.009  # for power diagram partitioning
-    self.partition_stepsize = 0.01  # for weight computation gradient descent
-    self.partition_vertices = None  # vertex of the designated partition, should be Mx2
-    self.partitioner = None
 
     if self.current_mode == self.mode_dc:
+      self.done_partition = False  # self partitioning termination flag
+      self.all_done_partition = False  # all nodes partitioning termination flag
+      self.partition_eps = 4e-6  # threshold to decide whether weight has reached critical point
+      self.partition_weight = 0.009  # for power diagram partitioning
+      self.partition_stepsize = 0.01  # for weight computation gradient descent
+      self.partition_vertices = None  # vertex of the designated partition, should be Mx2
+      self.partitioner = None
       self.partitioner = EquitablePartitioner(self.xy_min, self.xy_max,
                                               dist_type)
     ###################################################
