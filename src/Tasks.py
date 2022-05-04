@@ -26,6 +26,7 @@ class Tasks(Thread):
     self.G = G
     self.lambda_p = lambda_p  # Poisson process rate parameter
     self.mean_s = mean_s  # mean of service time, \bar{s}
+    self.num_task = 0 # total number of tasks generated
 
     self.done = False
 
@@ -67,6 +68,7 @@ class Tasks(Thread):
       if self.taskset_size == 0:
         self.taskset_size = 1
         self.utsp_n = self.taskset_size * self.utsp_r
+      print("task set size calculated from lowerbound: ", self.taskset_size)
 
       # initialize wedge divider
       self.utsp_wedge_angles = None
@@ -120,6 +122,8 @@ class Tasks(Thread):
       else:
         raise NotImplementedError(
             'Current task assignment mode is not supported')
+      
+      self.num_task += 1
 
   def assignRandom(self, t: tuple):
     # assign to a random vehicle
@@ -219,3 +223,6 @@ class Tasks(Thread):
 
   def terminate(self):
     self.done = True
+  
+  def get_num_task(self) -> int:
+    return self.num_task
