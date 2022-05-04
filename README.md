@@ -9,6 +9,10 @@ Python implementation of Dynamic Vehicle Routing (DVR) algorithms
 | :----------------: | :-------------------: |
 | ![](img/m_sqm.gif) |   ![](img/utsp.gif)   |
 
+| m-DC Policy (distributed partitioning) | No-Communication (NC) Policy |
+| :------------------------------------: | :--------------------------: |
+|      ![](img/dc_partitioning.gif)      |       ![](img/nc.gif)        |
+
 ## Supported Platform:
 - Anaconda on Ubuntu 20.04 LTS
 - Miniforge on Apple M1 Mac

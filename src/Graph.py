@@ -5,6 +5,8 @@ from matplotlib import pyplot as plt
 from matplotlib import animation
 from matplotlib.collections import LineCollection
 
+from GlobalTaskQueue import global_taskqueue
+
 
 class Graph:
 
@@ -35,10 +37,11 @@ class Graph:
     self.mode_dc = 'dc'  # divide-and-conquer
     self.mode_m_sqm = 'm_sqm'  # m-SQM
     self.mode_utsp = 'utsp'  # UTSP
+    self.mode_nc = 'nc'  # No-Communication
 
     self.available_modes = [
         self.mode_random, self.mode_fcfs, self.mode_dc, self.mode_m_sqm,
-        self.mode_utsp
+        self.mode_utsp, self.mode_nc
     ]
     self.current_mode = mode
 
@@ -138,15 +141,21 @@ class Graph:
     """ Collect state information from all the nodes """
     x = []
     y = []
-    for i in range(self.Nv):
-      if (self.V[i].current_mode == self.mode_dc
-          or self.current_mode == self.mode_utsp) and len(
-              self.V[i].tsp_path) > 0 and len(self.V[i].taskqueue) > 0:
-        x.append(self.V[i].taskqueue[self.V[i].tsp_path[0]][0])
-        y.append(self.V[i].taskqueue[self.V[i].tsp_path[0]][1])
-      elif (len(self.V[i].taskqueue) > 0):
-        x.append(self.V[i].taskqueue[0][0])
-        y.append(self.V[i].taskqueue[0][1])
+
+    if self.current_mode == self.mode_nc:
+      for task_loc, _ in global_taskqueue.taskqueue.values():
+        x.append(task_loc[0])
+        y.append(task_loc[1])
+    else:
+      for i in range(self.Nv):
+        if (self.V[i].current_mode == self.mode_dc
+            or self.current_mode == self.mode_utsp) and len(
+                self.V[i].tsp_path) > 0 and len(self.V[i].taskqueue) > 0:
+          x.append(self.V[i].taskqueue[self.V[i].tsp_path[0]][0])
+          y.append(self.V[i].taskqueue[self.V[i].tsp_path[0]][1])
+        elif (len(self.V[i].taskqueue) > 0):
+          x.append(self.V[i].taskqueue[0][0])
+          y.append(self.V[i].taskqueue[0][1])
     return x, y
 
   def gatherNumActiveTasks(self):
@@ -157,6 +166,8 @@ class Graph:
 
     if self.current_mode == self.mode_utsp:
       num_active_tasks += self.utsp_num_remaining_tasks
+    if self.current_mode == self.mode_nc:
+      num_active_tasks = len(global_taskqueue.taskqueue)
 
     return num_active_tasks
 

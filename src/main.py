@@ -48,7 +48,7 @@ def generateRandomGraph(N: int, mode='random') -> Graph:
 
 ### MAIN
 if __name__ == '__main__':
-  list_available_modes = ['random', 'fcfs', 'dc', 'm_sqm', 'utsp']
+  list_available_modes = ['random', 'fcfs', 'dc', 'm_sqm', 'utsp', 'nc']
   current_mode = 'utsp'
 
   # generate a random graph with 10 nodes, when in dc 5 is maximum

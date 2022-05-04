@@ -10,6 +10,8 @@ BETA_TSP_2 = 0.7120
 
 from utils.convex_hull import in_hull
 
+from GlobalTaskQueue import global_taskqueue
+
 
 class Tasks(Thread):
 
@@ -32,10 +34,11 @@ class Tasks(Thread):
     self.mode_dc = 'dc'  # divide-and-conquer
     self.mode_m_sqm = 'm_sqm'  # m-SQM
     self.mode_utsp = 'utsp'  # UTSP
+    self.mode_nc = 'nc'  # No-Communication
 
     self.available_modes = [
         self.mode_random, self.mode_fcfs, self.mode_dc, self.mode_m_sqm,
-        self.mode_utsp
+        self.mode_utsp, self.mode_nc
     ]
     self.current_mode = mode
 
@@ -112,6 +115,8 @@ class Tasks(Thread):
         self.assignMSQM((t, s))
       elif self.current_mode == self.mode_utsp:
         self.assignUTSP((t, s))
+      elif self.current_mode == self.mode_nc:
+        self.assignNC((t, s))
       else:
         raise NotImplementedError(
             'Current task assignment mode is not supported')
@@ -207,6 +212,10 @@ class Tasks(Thread):
     for tasks_remained in self.tasks_remained:
       num_remaining_tasks += len(tasks_remained)
     self.G.utsp_num_remaining_tasks = num_remaining_tasks
+
+  def assignNC(self, t: tuple):
+    # assign to the global task queue
+    global_taskqueue.addTask(t)
 
   def terminate(self):
     self.done = True
