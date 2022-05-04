@@ -205,3 +205,6 @@ class Graph:
       else:
         xmin = x0 + (ymin - y0) / m
         self.ax.plot([xmin, x0], [ymin, y0], '--')
+  
+  def get_system_time(self, num_task: int) -> float:
+    return (self.animatedt / 1000) * np.sum(self.num_active_tasks) / num_task
