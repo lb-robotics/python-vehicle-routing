@@ -71,11 +71,12 @@ if __name__ == '__main__':
   # gather number of active tasks over time....
   num_active_tasks = np.array(G.num_active_tasks)
   timesteps = (G.animatedt / 1000) * np.arange(len(num_active_tasks))
-  
+
+  # calculate system wait time (average wait time for all nodes)...
   system_time = G.get_system_time(T.get_num_task())
-  
   print("System wait time: ", system_time)
 
+  # plot figure
   plt.figure()
   plt.plot(timesteps, num_active_tasks)
   plt.xlabel('Timestamp [s]')
