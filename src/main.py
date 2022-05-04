@@ -5,13 +5,14 @@ from Tasks import *
 
 import numpy as np
 import time
+import argparse
 
 from Sampler import PointSampler
 from utils.k_median import KMedian
 
 
-def generateRandomGraph(N: int, mode='random') -> Graph:
-  G = Graph(mode=mode)
+def generateRandomGraph(N: int, mode='random', max_time=None) -> Graph:
+  G = Graph(mode=mode, max_time=max_time)
 
   if mode == 'm_sqm':
     # m-SQM --- precompute m-median points
@@ -48,14 +49,19 @@ def generateRandomGraph(N: int, mode='random') -> Graph:
 
 ### MAIN
 if __name__ == '__main__':
+  parser = argparse.ArgumentParser()
+  parser.add_argument("time", type=int)
+  parser.add_argument("mode")
+  args = parser.parse_args()
+
   list_available_modes = ['random', 'fcfs', 'dc', 'm_sqm', 'utsp', 'nc']
-  current_mode = 'utsp'
+  current_mode = args.mode
 
   # generate a random graph with 10 nodes, when in dc 5 is maximum
-  G = generateRandomGraph(10, mode=current_mode)
+  G = generateRandomGraph(5, mode=current_mode, max_time=args.time)
 
   # set up thread for generating and assigning tasks
-  T = Tasks(G, 5, mode=current_mode)
+  T = Tasks(G, 4.5, mode=current_mode)
 
   print("========== Starting now ==========")
   print("Close the figure to stop the simulation")
