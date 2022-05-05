@@ -316,7 +316,8 @@ class Node(Thread):
       if (np.linalg.norm(this_goal - self.state) < self.reach_goal_eps):
         t_s = self.taskqueue_serviceTime.pop(0)
         time.sleep(t_s)
-        self.taskqueue.pop(0)
+        t_loc, _ = self.taskqueue.pop(0)
+        self.past_tasks.append(t_loc)
         print("%d: Task done! Starting new task" % self.uid)
 
   def updategoal_utsp(self):

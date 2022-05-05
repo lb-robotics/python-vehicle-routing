@@ -10,7 +10,7 @@ from GlobalTaskQueue import global_taskqueue
 
 class Graph:
 
-  def __init__(self, mode='random', filename=None):
+  def __init__(self, mode='random', filename=None, max_time=None):
     """ Constructor """
     self.Nv = 0
     self.V = []
@@ -18,6 +18,7 @@ class Graph:
     self.root = None
     self.num_active_tasks = []
     self.centroids = None
+    self.max_time = max_time
 
     # for plotting
     self.animatedt = 100  # milliseconds
@@ -192,6 +193,9 @@ class Graph:
     self.pts_t.set_data(x, y)
 
     self.num_active_tasks.append(self.gatherNumActiveTasks())
+    if (self.max_time is not None) and (len(
+        self.num_active_tasks)) * self.animatedt / 1000 > self.max_time:
+      plt.close()
     return self.pts, self.lines
 
   def draw_wedges_utsp(self, depot: np.ndarray, angles: np.ndarray):
@@ -205,6 +209,6 @@ class Graph:
       else:
         xmin = x0 + (ymin - y0) / m
         self.ax.plot([xmin, x0], [ymin, y0], '--')
-  
+
   def get_system_time(self, num_task: int) -> float:
     return (self.animatedt / 1000) * np.sum(self.num_active_tasks) / num_task
