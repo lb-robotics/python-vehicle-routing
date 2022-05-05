@@ -193,9 +193,16 @@ class Graph:
     self.pts_t.set_data(x, y)
 
     self.num_active_tasks.append(self.gatherNumActiveTasks())
+
+    # Clear all outstanding active tasks if some Node still not done partitioning
+    if self.current_mode == self.mode_dc and not self.V[0].all_done_partition:
+      self.num_active_tasks = []
+
+    # Check if we need to terminate simulation
     if (self.max_time is not None) and (len(
         self.num_active_tasks)) * self.animatedt / 1000 > self.max_time:
       plt.close()
+
     return self.pts, self.lines
 
   def draw_wedges_utsp(self, depot: np.ndarray, angles: np.ndarray):
