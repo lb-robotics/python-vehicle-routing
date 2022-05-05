@@ -11,6 +11,7 @@ from Partitioner import EquitablePartitioner
 from Edge import Edge
 
 from GlobalTaskQueue import global_taskqueue
+from Sampler import PointSampler
 
 
 class Node(Thread):
@@ -71,14 +72,17 @@ class Node(Thread):
 
     if self.current_mode == self.mode_dc:
       self.done_partition = False  # self partitioning termination flag
+      self.reset_partition = False  # whether to start all over again
       self.all_done_partition = False  # all nodes partitioning termination flag
       self.partition_eps = 4e-6  # threshold to decide whether weight has reached critical point
       self.partition_weight = 0.009  # for power diagram partitioning
+      self.initial_partition_weight = self.partition_weight
       self.partition_stepsize = 0.01  # for weight computation gradient descent
       self.partition_vertices = None  # vertex of the designated partition, should be Mx2
       self.partitioner = None
       self.partitioner = EquitablePartitioner(self.xy_min, self.xy_max,
                                               dist_type)
+      self.partitioner_dist_type = dist_type
     ###################################################
 
     # UTSP
@@ -383,23 +387,30 @@ class Node(Thread):
   def send_dc(self):
     """ m-DC policies sends uid, state, partitioning weight, done to all neighbors """
     for onbr in self.out_nbr:
-      onbr.put(
-          (self.uid, self.state, self.partition_weight, self.done_partition))
+      onbr.put((self.uid, self.state, self.partition_weight,
+                self.done_partition, self.reset_partition))
 
   def transition_dc(self):
     generators = [None for _ in range(len(self.in_nbr) + 1)]
     generators[self.uid] = self.state
 
     radii = [None for _ in range(len(self.in_nbr) + 1)]
-    radii[self.uid] = self.partition_weight
-
-    partition_finish_nodes = [self.done_partition]
+    partition_finish_nodes = []
 
     for inbr in self.in_nbr:
-      uid, generator, radius, done = inbr.get()
+      uid, generator, radius, done, reset = inbr.get()
       generators[uid] = generator
-      radii[uid] = radius
+      if reset:
+        radii[uid] = self.initial_partition_weight
+        self.reset_partition = True
+        self.done_partition = False
+        self.partition_vertices = None
+      else:
+        radii[uid] = radius
       partition_finish_nodes.append(done)
+
+    radii[self.uid] = self.partition_weight
+    partition_finish_nodes.append(self.done_partition)
 
     generators = np.stack(generators)
     radii = np.array(radii)
@@ -410,12 +421,26 @@ class Node(Thread):
 
     if not self.done_partition:
       # continue to update partition
-      if self.partitioner.generators is None:
+      if self.partitioner.generators is None or self.reset_partition:
         self.partitioner.setGenerators(generators)
+        self.partition_weight = self.initial_partition_weight
       if len(radii) > 0:
         self.partitioner.updateRadii(radii)
-      grad_w = self.partitioner.computeGrad(self.uid)
 
+      try:
+        grad_w = self.partitioner.computeGrad(self.uid)
+      except:
+        self.reset_partition = True
+        print("Node %d: Voronoi failed. Re-initializing generators..." %
+              self.uid)
+
+        sampler = PointSampler(self.xy_min, self.xy_max,
+                               self.partitioner_dist_type)
+        self.state = sampler.sample(1).squeeze()
+        self.partition_weight = self.initial_partition_weight
+        return
+
+      self.reset_partition = False
       new_partition_weight = self.partition_weight - grad_w * self.partition_stepsize
       if norm(self.partition_weight -
               new_partition_weight) < self.partition_eps:

@@ -13,6 +13,9 @@ def in_hull(p: np.ndarray, hull: np.ndarray):
 
   Referenced from: https://stackoverflow.com/a/16898636
   """
+  if hull is None:
+    return False
+
   if not isinstance(hull, Delaunay):
     hull = Delaunay(hull)
 
